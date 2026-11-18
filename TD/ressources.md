@@ -194,3 +194,63 @@ sequenceDiagram
     BFF-->>Frontend: Réponse JSON formatée
 
 ```
+
+### Lancer le serveur SOAP et le BFF
+
+Depuis le dossier du projet, ouvrir deux terminaux PowerShell :
+
+1. **Démarrer le serveur SOAP** (port `8000`) :
+
+```powershell
+python -m uvicorn server_soap:app --host 0.0.0.0 --port 8000
+```
+
+Puis vérifier que le service répond à l'adresse :
+
+```text
+http://localhost:8000/purchase?wsdl
+```
+
+2. **Démarrer le BFF FastAPI** (port `8081`, par exemple) :
+
+```powershell
+python -m uvicorn main:app --reload --port 8081
+```
+
+Le BFF est alors accessible à l'adresse :
+
+```text
+http://localhost:8081
+```
+
+Sa documentation interactive Swagger est disponible ici :
+
+```text
+http://localhost:8081/docs
+```
+
+Pour fonctionner ensemble, le BFF doit être configuré avec l'adresse du serveur SOAP, par exemple :
+
+```python
+SOAP_URL = "http://localhost:8000/purchase?wsdl"
+```
+
+### Installer les dépendances
+
+Depuis le dossier du projet, ouvrez PowerShell et installez les dépendances listées dans `requirements.txt` :
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Si le projet utilise un environnement virtuel, activez-le avant l'installation :
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+
+
+
