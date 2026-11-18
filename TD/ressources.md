@@ -4,3 +4,154 @@
 
 #### Exercice 1
 Implémenter ce service en C# ou Python ou node
+
+#### Exercice 2
+Implémenter un service de paiement.
+
+* **Nom :** Nom de famille du client.
+* **Prénom :** Prénom du client.
+* **Adresse :** Adresse complète de facturation ou de livraison.
+* **Montant :** Montant financier global de la transaction.
+* **IdAchat :** Identifiant unique universel rattaché au panier ou à la commande.
+* **DateAchat :** Horodatage précis (date et heure universelles) de la validation de la transaction.
+
+Retour
+* **Retour :** Achat OK/KO
+
+# TD Global
+
+
+# Spécifications Techniques et Fonctionnelles : Site E-Commerce Moderne
+
+## 1. Vue d'ensemble et Objectifs
+
+Le projet consiste à concevoir un site e-commerce performant intégrant :
+
+* Une **recherche de produits ultra-rapide** optimisée par un protocole de communication distant direct et léger.
+* Un **panier d'achat** et un parcours de commande fluide.
+* Un **service de paiement sécurisé** s'appuyant sur un protocole web de type services web basés sur des enveloppes structurées.
+* Des **notifications en temps réel** par flux bidirectionnels permanents pour informer instantanément l'utilisateur de l'état de son paiement et de sa commande.
+
+---
+
+## 2. Architecture Technique (Frontend -> BFF -> Services)
+
+```mermaid
+flowchart TD
+    subgraph Clients ["Couche Client (Frontends)"]
+        Web[Application Web / Navigateur]
+        Mobile[Application Mobile / Smartphone]
+    end
+
+    subgraph BFF_Layer ["Couche BFF (Backend for Frontend)"]
+        WebBFF["BFF Web<br/>(Optimisé pour le navigateur)"]
+        MobileBFF["BFF Mobile<br/>(Optimisé pour l'écran réduit & réseau mobile)"]
+    end
+
+    subgraph Backend_Layer ["Services / Microservices Backend Métier"]
+        Auth[Service d'Authentification]
+        Catalog[Service Catalogue & Produits]
+        Order[Service Panier & Commandes]
+        Payment[Service Paiement / SOAP]
+    end
+
+    %% Connexions Clients vers BFF
+    Web -->|Requêtes HTTP / REST / GraphQL| WebBFF
+    Mobile -->|Requêtes adaptées & payloads légers| MobileBFF
+
+    %% Orchestres par les BFF vers les services
+    WebBFF --> Auth
+    WebBFF --> Catalog
+    WebBFF --> Order
+    WebBFF --> Payment
+
+    MobileBFF --> Auth
+    MobileBFF --> Catalog
+    MobileBFF --> Order
+    MobileBFF --> Payment
+```
+L'architecture repose sur un découplage rigoureux en couches pour séparer l'interface utilisateur, l'orchestration et les services métiers :
+
+* **Frontend (Interface Utilisateur) :** Application cliente responsable de l'affichage du catalogue, de la saisie des formulaires, de la gestion locale du panier et du maintien d'une connexion persistante pour les notifications en direct.
+* **BFF (Backend for Frontend) :** Passerelle applicative centrale. Elle centralise les requêtes de l'interface, gère la sécurité, traduit les requêtes de recherche vers le microservice dédié, pilote les notifications en temps réel et formate les requêtes vers le service de paiement externe.
+* **Microservice de Recherche :** Service interne hautes performances dédié exclusivement à l'indexation et à l'interrogation rapide du catalogue de produits.
+* **Service de Paiement (SOAP) :** Service distant ou simulé validant la transaction financière à partir des données personnelles et d'achat transmises de manière sécurisée.
+
+A la fin du TD on mettra en place un système comme Kafka pour la gestion event/message.
+
+---
+
+## 3. Diagramme de Séquence et d'Architecture
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Utilisateur
+    participant FE as Frontend (UI / Canal Persistant)
+    participant BFF as BFF & Gestionnaire de Notifications
+    participant GRPC as Service de Recherche Haute Performance
+    participant SOAP as Service de Paiement Externe
+
+    %% Flux de recherche rapide
+    Client->>FE: Saisit un mot-clé dans la barre de recherche
+    FE->>BFF: Demande de recherche de produits
+    BFF->>GRPC: Interrogation optimisée du catalogue
+    GRPC-->>BFF: Retourne la liste des produits correspondants
+    BFF-->>FE: Transmet les résultats au format adapté
+    FE-->>Client: Affiche instantanément les produits
+
+    %% Connexion pour les notifications en temps réel
+    Note over Client,BFF: Établissement d'un canal persistant (temps réel)
+    Client->>BFF: Ouverture de la connexion de notification
+    BFF-->>Client: Canal persistant établi
+
+    %% Flux de commande, paiement et notification
+    Client->>FE: Valide le panier et saisit ses informations
+    FE->>BFF: Soumission de la commande (Panier et informations client)
+    
+    BFF->>SOAP: Transmission de la transaction de paiement (Nom, Prénom, Adresse, Montant, IdAchat, DateAchat)
+    
+    Note over BFF: Traitement asynchrone du paiement en cours...
+    BFF-->>FE: Accuse réception de la prise en charge de la commande
+    
+    SOAP-->>BFF: Retour du service de paiement (Statut : Achat OK ou Achat KO)
+    
+    Note over BFF,FE: Diffusion de la notification par le canal persistant
+    BFF-->>FE: Notification en temps réel du résultat du paiement
+    FE-->>Client: Mise à jour visuelle (Écran de succès ou d'échec du paiement)
+
+```
+
+---
+
+## 4. Modèle de Données du Paiement
+
+La transaction financière transmise au service de paiement externe respecte un contrat précis divisé en deux parties :
+
+### Données d'entrée (Requête de paiement)
+
+* **Nom :** Nom de famille du client.
+* **Prénom :** Prénom du client.
+* **Adresse :** Adresse complète de facturation ou de livraison.
+* **Montant :** Montant financier global de la transaction.
+* **IdAchat :** Identifiant unique universel rattaché au panier ou à la commande.
+* **DateAchat :** Horodatage précis (date et heure universelles) de la validation de la transaction.
+
+### Données de sortie (Réponse du paiement)
+
+* **Statut de retour :** Libellé textuel indiquant obligatoirement soit l'état de validation (`Achat OK`), soit l'état d'échec (`Achat KO`).
+
+---
+
+## 5. Parcours Utilisateur et Flux Fonctionnel
+
+1. **Recherche de produits :** L'utilisateur tape sa recherche. La requête transite par le BFF qui l'exécute via le protocole de recherche haute performance pour un affichage instantané.
+2. **Constitution du panier :** L'utilisateur sélectionne ses articles et initialise son parcours d'achat.
+3. **Canal de notification :** En arrière-plan, l'interface établit un canal de communication bidirectionnel persistant avec le BFF pour écouter les futurs événements de la commande.
+4. **Saisie des informations :** Le client renseigne ses informations personnelles (Nom, Prénom, Adresse).
+5. **Validation et Paiement :**
+* L'utilisateur valide sa commande.
+* Le BFF rassemble les données du panier, génère l'identifiant unique, horodate la transaction et transmet l'ensemble au service de paiement externe.
+
+
+6. **Notification du résultat :** Dès que le service de paiement renvoie sa réponse (`Achat OK` ou `Achat KO`), le BFF pousse immédiatement l'information au client via le canal en temps réel, permettant à l'interface d'afficher la confirmation ou l'erreur sans rechargement de page.
