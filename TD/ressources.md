@@ -243,6 +243,42 @@ Depuis le dossier du projet, ouvrez PowerShell et installez les dépendances lis
 python -m pip install -r requirements.txt
 ```
 
+## Protocol Buffers (Proto) avec gRPC
+
+Protocol Buffers (Proto) est un format de définition de données compact, indépendant du langage. Un fichier `.proto` décrit les messages échangés (champs et types) et peut également définir des services gRPC. Chaque champ a un numéro unique qui fait partie du format binaire : conservez ces numéros lors des évolutions du contrat.
+
+Exemple de `protos/product.proto` :
+
+```proto
+syntax = "proto3";
+
+package product;
+
+message Product {
+    int32 id = 1;
+    string name = 2;
+    double price = 3;
+}
+```
+
+### Générer le code Python
+
+Depuis la racine du projet, installez les outils si nécessaire :
+
+```powershell
+python -m pip install grpcio grpcio-tools
+```
+
+Exécutez ensuite la commande de compilation :
+
+```powershell
+python -m grpc_tools.protoc -Iprotos --python_out=. --grpc_python_out=. protos/product.proto
+```
+
+`-Iprotos` indique le dossier où chercher les fichiers `.proto`, et `protos/product.proto` est le fichier compilé. `--python_out=.` génère le code des messages, généralement `product_pb2.py`. `--grpc_python_out=.` génère les stubs client et serveur, généralement `product_pb2_grpc.py`, lorsque le fichier définit un service gRPC. Les deux fichiers sont créés à la racine (`.`). Si le fichier ne contient que des messages, `product_pb2.py` suffit.
+
+Importez le module généré pour créer et sérialiser des messages, par exemple : `product_pb2.Product(id=1, name="Clavier", price=49.99)`. Pour appeler un service gRPC, utilisez le stub généré dans `product_pb2_grpc.py` avec un canal gRPC. Après chaque modification du `.proto`, relancez la commande pour régénérer les modules.
+
 Si le projet utilise un environnement virtuel, activez-le avant l'installation :
 
 ```powershell
