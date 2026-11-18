@@ -155,3 +155,42 @@ La transaction financière transmise au service de paiement externe respecte un 
 
 
 6. **Notification du résultat :** Dès que le service de paiement renvoie sa réponse (`Achat OK` ou `Achat KO`), le BFF pousse immédiatement l'information au client via le canal en temps réel, permettant à l'interface d'afficher la confirmation ou l'erreur sans rechargement de page.
+
+## La partie paiement
+
+
+
+### Comment s'effectue la transformation (JSON ➔ SOAP) ?
+
+1. **Validation du JSON (Entrée Frontend) :**
+Le frontend (React, Vue, mobile) envoie une requête `POST /api/purchases` contenant un JSON propre et typé. FastAPI intercepte ce JSON et le valide automatiquement grâce à un modèle **Pydantic** (qui s'assure par exemple que le montant est bien un nombre, que la date est valide, etc.).
+2. **Mapping et Appel SOAP (Zeep) :**
+Le BFF récupère les données validées sous forme de dictionnaire Python, puis appelle la méthode SOAP correspondante (ex: `ValiderAchat`) exposée par le client Zeep. **Zeep se charge en interne de convertir automatiquement ce dictionnaire Python en enveloppe XML/SOAP** (avec les bons namespaces `urn:maal-si:purchase` et les bonnes balises comme `<tns:Nom>`).
+3. **Réponse vers le Frontend :**
+Le service SOAP renvoie du XML brut. Zeep le convertit en objet Python, et votre BFF le transforme à nouveau en un objet JSON élégant pour le renvoyer au frontend.
+
+---
+
+### Diagramme de Séquence (Mermaid)
+
+
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Frontend as Frontend (Client Web/Mobile)
+    participant BFF as BFF FastAPI (Python)
+    participant Zeep as Client Zeep (SOAP Wrapper)
+    participant SOAP as Service Backend SOAP (Port 8000)
+
+    Frontend->>BFF: POST /api/purchases (JSON)
+    Note over BFF: Validation du payload<br/>via Pydantic
+    BFF->>Zeep: valider_achat(data_dict)
+    Note over Zeep: Transformation automatique<br/>dict Python ➔ XML SOAP (Envelope/Body)
+    Zeep->>SOAP: Requête HTTP POST (XML / urn:maal-si:purchase)
+    SOAP-->>Zeep: Réponse HTTP 200 (XML SOAP Response)
+    Note over Zeep: Parsing XML ➔ Objet Python
+    Zeep-->>BFF: Données structurées
+    BFF-->>Frontend: Réponse JSON formatée
+
+```

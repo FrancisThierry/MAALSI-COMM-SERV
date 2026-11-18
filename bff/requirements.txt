@@ -1,0 +1,7 @@
+﻿fastapi
+uvicorn
+zeep
+grpcio
+grpcio-tools
+httpx
+pydantic-settings
